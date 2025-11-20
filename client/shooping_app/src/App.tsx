@@ -1,4 +1,5 @@
 import './App.css'
+import Dashboard from './page/Dashboard'
 
 function App() {
 
@@ -6,7 +7,7 @@ function App() {
   return (
     <>
       <div>
-hello
+<Dashboard/>
 </div>
     </>
   )
