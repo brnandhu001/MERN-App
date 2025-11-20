@@ -13,12 +13,38 @@ exports.createProduct = async (req, res, next) => {
 // Get All Products
 exports.getProducts = async (req, res, next) => {
   try {
-    const products = await Product.find({});
-    res.json({ success: true, products });
-  } catch (error) {
-    next(error);
+    // --- Pagination ---
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    // --- Sorting ---
+    const sortField = req.query.sort || "createdAt"; // default: newest first
+    const sortOrder = req.query.order === "asc" ? 1 : -1; // asc = 1, desc = -1
+    const sort = { [sortField]: sortOrder };
+
+    // --- Query Products with pagination + sorting ---
+    const products = await Product.find()
+      .sort(sort)
+      .skip(skip)
+      .limit(limit);
+
+    // --- Total count for frontend ---
+    const total = await Product.countDocuments();
+
+    res.json({
+      success: true,
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+      products,
+    });
+
+  } catch (err) {
+    next(err);
   }
 };
+
 
 // Get Single Product
 exports.getProductById = async (req, res, next) => {
