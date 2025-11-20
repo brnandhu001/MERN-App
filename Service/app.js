@@ -13,6 +13,8 @@ app.use(express.json());
 
 // Routes
 app.use('/api/users', require('./routes/userRoutes'));
+app.use("/api/products", require("./routes/productRoutes"));
+
 
 // 404 Not Found Middleware
 app.use((req, res, next) => {
