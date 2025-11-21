@@ -48,11 +48,11 @@ app.use((err, req, res, next) => {
 
 
 // Local Server
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+// app.listen(port, () => {
+//   console.log(`Server running on port ${port}`);
+// });
 
 
 //export for serverless deployment
-// module.exports = app;
+module.exports = app;
 
