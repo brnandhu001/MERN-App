@@ -8,6 +8,7 @@ export default function Login() {
   const navigate = useNavigate();
 
  const handleLogin = async (e: React.FormEvent) => {
+    console.log("Login form submitted");
     e.preventDefault();
 
     const email = (e.target as any).email.value;

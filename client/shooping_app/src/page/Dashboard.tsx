@@ -1,24 +1,25 @@
 import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+// import { RootState, AppDispatch } from "../app/store";
+
 import Modal from "../components/modal";
 import ProductForm from "../components/ProductForm";
 
-type Product = {
-  _id: string;
-  name: string;
-  image: string;
-  price: number;
-  category: string;
-  stock: number;
-};
-
+import {
+  fetchProducts,
+  addProduct,
+  updateProduct,
+  deleteProduct,
+} from "../feature/products/productApis";
+import type { AppDispatch, RootState } from "../app/store";
 
 function Dashboard() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<"add" | "edit" | "delete" | null>(
-    null
-  );
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const dispatch = useDispatch<AppDispatch>();
+
+  // read the whole product slice and derive the expected fields with fallbacks
+  const productState = useSelector((state: RootState) => state.products);
+  const products = (productState as any)?.products ?? (productState as any)?.items ?? [];
+  const totalPages = (productState as any)?.totalPages ?? 1;
 
   // Sorting
   const [sortField, setSortField] = useState("createdAt");
@@ -26,84 +27,68 @@ function Dashboard() {
 
   // Pagination
   const [page, setPage] = useState(1);
-  const [limit] = useState(5); // items per page
-  const [totalPages, setTotalPages] = useState(1);
+  const limit = 5;
 
+  // Modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalType, setModalType] =
+    useState<"add" | "edit" | "delete" | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+
+  // Fetch products from API using Redux
   useEffect(() => {
-    fetchProducts();
-  }, [sortField, sortOrder, page]); // auto update on sort + page
+    dispatch(fetchProducts(page, limit, sortField, sortOrder));
+  }, [dispatch, page, limit, sortField, sortOrder]);
 
-  const fetchProducts = async () => {
-    try {
-      const res = await fetch(
-        `http://localhost:3000/api/products?page=${page}&limit=${limit}&sort=${sortField}&order=${sortOrder}`
-      );
-
-      const data = await res.json();
-      setProducts(data.products || []);
-      setTotalPages(data.pages || 1);
-    } catch (err) {
-      console.error("Error:", err);
-    }
-  };
-
-  // Modal Controls
   const openAddModal = () => {
     setModalType("add");
     setSelectedProduct(null);
     setIsModalOpen(true);
   };
 
-  const handleAddProduct = async (data: any) => {
-  await fetch("http://localhost:3000/api/products", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
+  const handleAddProduct = (data: any) => {
+    dispatch(
+      addProduct(data, () => {
+        setIsModalOpen(false);
+        dispatch(fetchProducts(page, limit, sortField, sortOrder));
+      })
+    );
+  };
 
-  fetchProducts(); // reload table
-  setIsModalOpen(false);
-};
+  const handleUpdateProduct = (data: any) => {
+    if (!selectedProduct) return;
 
-const handleUpdateProduct = async (data: any) => {
-  if (!selectedProduct) return;
+    dispatch(
+      updateProduct(selectedProduct._id, data, () => {
+        setIsModalOpen(false);
+        dispatch(fetchProducts(page, limit, sortField, sortOrder));
+      })
+    );
+  };
 
-  await fetch(`http://localhost:3000/api/products/${selectedProduct._id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-
-  fetchProducts();
-  setIsModalOpen(false);
-};
-
-
-  const openEditModal = (product: Product) => {
+  const openEditModal = (product: any) => {
     setModalType("edit");
     setSelectedProduct(product);
     setIsModalOpen(true);
   };
 
-  const openDeleteModal = (product: Product) => {
+  const openDeleteModal = (product: any) => {
     setModalType("delete");
     setSelectedProduct(product);
     setIsModalOpen(true);
   };
 
-  // Delete Confirm
-  const handleDeleteConfirm = async () => {
+  const handleDeleteConfirm = () => {
     if (!selectedProduct) return;
 
-    await fetch(`http://localhost:3000/api/products/${selectedProduct._id}`, {
-      method: "DELETE",
-    });
-
-    setProducts(products.filter((p) => p._id !== selectedProduct._id));
-    setIsModalOpen(false);
+    dispatch(
+      deleteProduct(selectedProduct._id, () => {
+        setIsModalOpen(false);
+        dispatch(fetchProducts(page, limit, sortField, sortOrder));
+      })
+    );
   };
 
-  // Sorting Handler
   const handleSort = (field: string) => {
     if (sortField === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -121,7 +106,7 @@ const handleUpdateProduct = async (data: any) => {
 
         <button
           onClick={openAddModal}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 shadow"
+          className="bg-blue-600 text-white px-4 py-2 rounded"
         >
           + Add Product
         </button>
@@ -129,31 +114,28 @@ const handleUpdateProduct = async (data: any) => {
 
       {/* TABLE */}
       <div className="overflow-x-auto">
-        <table className="min-w-full text-sm text-left bg-white shadow-lg rounded-lg overflow-hidden">
+        <table className="min-w-full text-sm bg-white shadow-lg rounded-lg overflow-hidden">
           <thead className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
             <tr>
               <th className="px-6 py-3">Image</th>
 
               <th
-                className="px-6 py-3 cursor-pointer select-none"
+                className="px-6 py-3 cursor-pointer"
                 onClick={() => handleSort("name")}
               >
-                Name{" "}
-                {sortField === "name" &&
-                  (sortOrder === "asc" ? "↑" : "↓")}
+                Name {sortField === "name" && (sortOrder === "asc" ? "↑" : "↓")}
               </th>
 
               <th
-                className="px-6 py-3 cursor-pointer select-none"
+                className="px-6 py-3 cursor-pointer"
                 onClick={() => handleSort("price")}
               >
-                Price (₹){" "}
-                {sortField === "price" &&
-                  (sortOrder === "asc" ? "↑" : "↓")}
+                Price{" "}
+                {sortField === "price" && (sortOrder === "asc" ? "↑" : "↓")}
               </th>
 
               <th
-                className="px-6 py-3 cursor-pointer select-none"
+                className="px-6 py-3 cursor-pointer"
                 onClick={() => handleSort("category")}
               >
                 Category{" "}
@@ -162,12 +144,11 @@ const handleUpdateProduct = async (data: any) => {
               </th>
 
               <th
-                className="px-6 py-3 cursor-pointer select-none"
+                className="px-6 py-3 cursor-pointer"
                 onClick={() => handleSort("stock")}
               >
                 Stock{" "}
-                {sortField === "stock" &&
-                  (sortOrder === "asc" ? "↑" : "↓")}
+                {sortField === "stock" && (sortOrder === "asc" ? "↑" : "↓")}
               </th>
 
               <th className="px-6 py-3 text-center">Actions</th>
@@ -175,60 +156,31 @@ const handleUpdateProduct = async (data: any) => {
           </thead>
 
           <tbody className="divide-y divide-gray-200">
-            {products.map((item) => (
-              <tr
-                key={item._id}
-                className="hover:bg-gray-50 transition-all duration-200"
-              >
-                {/* IMAGE */}
+            {products?.map((item:any) => (
+              <tr key={item._id} className="hover:bg-gray-50">
                 <td className="px-6 py-4">
                   <img
                     src={item.image}
-                    alt={item.name}
-                    className="w-14 h-14 rounded-md object-cover shadow"
+                    className="w-14 h-14 rounded-md object-cover"
                   />
                 </td>
 
-                {/* NAME */}
-                <td className="px-6 py-4 font-medium">{item.name}</td>
+                <td className="px-6 py-4">{item.name}</td>
+                <td className="px-6 py-4 text-green-700">₹{item.price}</td>
+                <td className="px-6 py-4">{item.category}</td>
+                <td className="px-6 py-4">{item.stock}</td>
 
-                {/* PRICE */}
-                <td className="px-6 py-4 text-green-600 font-semibold">
-                  ₹{item.price}
-                </td>
-
-                {/* CATEGORY */}
-                <td className="px-6 py-4">
-                  <span className="px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-semibold">
-                    {item.category}
-                  </span>
-                </td>
-
-                {/* STOCK */}
-                <td className="px-6 py-4">
-                  <span
-                    className={`px-2 py-1 rounded text-xs font-semibold ${
-                      item.stock > 0
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-red-100 text-red-700"
-                    }`}
-                  >
-                    {item.stock > 0 ? `${item.stock} in stock` : "Out of stock"}
-                  </span>
-                </td>
-
-                {/* ACTIONS */}
-                <td className="px-6 py-4 flex justify-center gap-3">
+                <td className="px-6 py-4 flex gap-3 justify-center">
                   <button
                     onClick={() => openEditModal(item)}
-                    className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md shadow"
+                    className="px-4 py-2 bg-yellow-500 text-white rounded"
                   >
                     Edit
                   </button>
 
                   <button
                     onClick={() => openDeleteModal(item)}
-                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md shadow"
+                    className="px-4 py-2 bg-red-600 text-white rounded"
                   >
                     Delete
                   </button>
@@ -240,7 +192,7 @@ const handleUpdateProduct = async (data: any) => {
       </div>
 
       {/* PAGINATION */}
-      <div className="flex justify-center items-center space-x-2 mt-6">
+      <div className="flex justify-center gap-2 mt-6">
         <button
           className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
           disabled={page === 1}
@@ -249,7 +201,7 @@ const handleUpdateProduct = async (data: any) => {
           Prev
         </button>
 
-        {[...Array(totalPages)].map((_, i) => (
+        {[...Array(totalPages)]?.map((_, i) => (
           <button
             key={i}
             onClick={() => setPage(i + 1)}
@@ -284,33 +236,25 @@ const handleUpdateProduct = async (data: any) => {
             : "Delete Product"
         }
       >
-        {/* ADD MODAL */}
-{modalType === "add" && (
-  <ProductForm
-    buttonLabel="Add Product"
-    onSubmit={handleAddProduct}
-  />
-)}
+        {modalType === "add" && (
+          <ProductForm buttonLabel="Add Product" onSubmit={handleAddProduct} />
+        )}
 
+        {modalType === "edit" && selectedProduct && (
+          <ProductForm
+            initialValues={selectedProduct}
+            buttonLabel="Update"
+            onSubmit={handleUpdateProduct}
+          />
+        )}
 
-        {/* EDIT MODAL */}
-  {modalType === "edit" && selectedProduct && (
-  <ProductForm
-    initialValues={selectedProduct}
-    buttonLabel="Update Product"
-    onSubmit={handleUpdateProduct}
-  />
-)}
-
-
-        {/* DELETE MODAL */}
         {modalType === "delete" && selectedProduct && (
           <div>
             <p>
               Are you sure you want to delete{" "}
               <b>{selectedProduct.name}</b>?
             </p>
-            <div className="flex justify-end mt-4 space-x-2">
+            <div className="flex justify-end mt-4 gap-2">
               <button
                 onClick={() => setIsModalOpen(false)}
                 className="px-3 py-1 bg-gray-400 text-white rounded"

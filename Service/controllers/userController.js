@@ -49,30 +49,30 @@ exports.login = async (req, res) => {
 exports.refreshToken = async (req, res) => {
   try {
     const { token } = req.body;
-    if (!token) return res.status(401).json({ msg: "No refresh token" });
 
-    // Find user with this refresh token
+    if (!token) return res.status(401).json({ message: "No refresh token" });
+
     const user = await User.findOne({ refreshToken: token });
-    if (!user) return res.status(403).json({ msg: "Invalid refresh token" });
+    if (!user)
+      return res.status(403).json({ message: "Refresh token not found" });
 
-    jwt.verify(token, process.env.JWT_REFRESH_SECRET, async (err, decode) => {
-      if (err) return res.status(403).json({ msg: "Invalid refresh token" });
+    jwt.verify(token, process.env.REFRESH_TOKEN_SECRET, async (err) => {
+      if (err) return res.status(403).json({ message: "Invalid refresh token" });
 
-      // Generate new access token
       const newAccessToken = generateAccessToken(user);
 
-      // Optional: Token rotation (create new refresh token)
+      // ROTATE refresh token
       const newRefreshToken = generateRefreshToken(user);
       user.refreshToken = newRefreshToken;
       await user.save();
 
       res.json({
         accessToken: newAccessToken,
-        refreshToken: newRefreshToken
+        refreshToken: newRefreshToken,
       });
     });
-  } catch (err) {
-    res.status(500).json({ msg: err.message });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 
