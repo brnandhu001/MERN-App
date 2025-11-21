@@ -1,10 +1,12 @@
 import { useDispatch } from "react-redux";
 import { loginUser } from "../feature/auth/authAPI";
 import { useNavigate } from "react-router-dom";
+import type { AppDispatch } from "../app/store";
+
 
 
 export default function Login() {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
 
  const handleLogin = async (e: React.FormEvent) => {
