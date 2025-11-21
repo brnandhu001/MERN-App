@@ -2,8 +2,9 @@ import axios, { AxiosError,type InternalAxiosRequestConfig } from "axios";
 import { setAccessToken, logout } from "../feature/auth/authSlice";
 import { store, type RootState } from "../app/store";
 
+
 const api = axios.create({
-  baseURL: "http://localhost:3000/api",
+  baseURL: import.meta.env.VITE_API_BASE_URL,
 });
 
 let isRefreshing = false;
@@ -60,7 +61,7 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const res = await axios.post("http://localhost:3000/api/users/refresh", {
+        const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/users/refresh`, {
           token: refreshToken,
         });
 
