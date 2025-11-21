@@ -2,31 +2,33 @@ const express = require('express');
 const connectDB = require('./config/db');
 require('dotenv').config();
 const cors = require("cors");
-
-
-
+const { auth } = require("./middleware/authMiddleware");
 
 const app = express();
 const port = 3000;
 
-// Connect to MongoDB
+// Database
 connectDB();
 
-// Body parser
+// Body Parser
 app.use(express.json());
 
-// allow frontend access
+// CORS
 app.use(cors({
-  origin: "http://localhost:5173",  // your React URL
+  origin: "http://localhost:5173",
   methods: ["GET", "POST", "PUT", "DELETE"],
 }));
 
-// Routes
+
+// 🔓 PUBLIC ROUTES (No login required)
 app.use('/api/users', require('./routes/userRoutes'));
-app.use("/api/products", require("./routes/productRoutes"));
 
 
-// 404 Not Found Middleware
+// 🔐 PROTECTED ROUTES (Require JWT)
+app.use("/api/products", auth, require("./routes/productRoutes"));
+
+
+// 404 Handler
 app.use((req, res, next) => {
   res.status(404).json({
     success: false,
@@ -34,7 +36,7 @@ app.use((req, res, next) => {
   });
 });
 
-// 500 Error Handler Middleware
+// Error Handler
 app.use((err, req, res, next) => {
   console.error("Server Error:", err);
 
@@ -43,10 +45,13 @@ app.use((err, req, res, next) => {
     message: err.message || "Internal Server Error",
   });
 });
-//for local testing
+
+
+// Local Server
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
+
 
 //export for serverless deployment
 // module.exports = app;
